@@ -5,7 +5,8 @@ Package.describe({
 
 Package.on_use(function (api) {
   api.export('PBSolver');
-//  api.use('underscore');
+  api.use('check');
+  api.use('underscore');
   api.add_files(['minisatp.js', 'api.js']);
 });
 
