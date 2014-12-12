@@ -24,6 +24,8 @@ PBSolver = function () {
   C._createTheSolver();
 
   this._nextGenVarNum = 1;
+  this._numClausesAdded = 0;
+  this._numConstraintsAdded = 0;
 };
 
 // This is just a test of passing in a string that gets split
@@ -58,6 +60,8 @@ PBSolver.prototype.addClause = function (positives, negatives) {
     C._addClause(native.pushString(positives.join('\n')),
                  native.pushString(negatives.join('\n')));
   });
+
+  this._numClausesAdded++;
 };
 
 var TYPE_CODES = {
@@ -86,6 +90,8 @@ PBSolver.prototype.addConstraint = function (vars, coeffs, type, rhs) {
                      TYPE_CODES[type],
                      rhs);
   });
+
+  this._numConstraintsAdded++;
 };
 
 PBSolver.prototype.exactlyOne = function (vars) {
