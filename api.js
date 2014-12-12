@@ -22,6 +22,8 @@ PBSolver = function () {
   };
 
   C._createTheSolver();
+
+  this._nextGenVarNum = 1;
 };
 
 // This is just a test of passing in a string that gets split
@@ -34,7 +36,13 @@ PBSolver.prototype._countLines = function (str) {
 
 var VariableName = Match.Where(function (x) {
   check(x, String);
-  return x.indexOf('\n') < 0;
+  if (x.indexOf('\n') >= 0) {
+    return false;
+  }
+  if (x.charAt(0) === '`') {
+    return /^`[1-9][0-9]*$/.test(x);
+  }
+  return true;
 });
 var WholeNumber = Match.Where(function (x) {
   check(x, Match.Integer);
@@ -103,6 +111,23 @@ PBSolver.prototype.isFalse = function (v) {
   this.addClause([], [v]);
 };
 
+PBSolver.prototype.implies = function (p, q) {
+  this.addClause([q], [p]);
+};
+
+PBSolver.prototype.impliesNot = function (p, q) {
+  this.addClause([], [p, q]);
+}
+
+PBSolver.prototype.notPImpliesQ = function (p, q) {
+  // (not p) implies q -- same as OR
+  this.addClause([p, q]);
+};
+
+PBSolver.prototype.notPImpliesNotQ = function (p, q) {
+  this.addClause([p], [q]);
+};
+
 // returns `null` or an array of the variables that are positive,
 // in sorted order.
 PBSolver.prototype.solve = function () {
@@ -117,11 +142,18 @@ PBSolver.prototype.solve = function () {
     C._getSolution(result);
     for (var i = 0; i < numVariables; i++) {
       if (C.HEAPU8[result + i]) {
-        trueVariables.push(C.Pointer_stringify(C._getVariableAtIndex(i)));
+        var varNamePtr = C._getVariableAtIndex(i);
+        if (C.HEAPU8[varNamePtr] !== 96) { // Doesn't start with backtick `
+          trueVariables.push(C.Pointer_stringify(varNamePtr));
+        }
       }
     }
   });
 
   trueVariables.sort();
   return trueVariables;
+};
+
+PBSolver.prototype.genVar = function () {
+  return "`" + (this._nextGenVarNum++);
 };

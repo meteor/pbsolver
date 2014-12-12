@@ -111,3 +111,27 @@ Tinytest.add("pbsolver - eight queens", function (test) {
     return Number(queen.charAt(0)) + Number(queen.charAt(1));
   });
 });
+
+Tinytest.add("pbsolver - genVar", function (test) {
+  var solver = new PBSolver();
+  var a = solver.genVar();
+  var b = solver.genVar();
+  var c = solver.genVar();
+
+  solver.implies(a, "1");
+  solver.notPImpliesNotQ(a, "1");
+  solver.impliesNot(a, "2");
+  solver.implies(a, "3");
+
+  solver.implies(b, "2");
+  solver.implies(b, "4");
+
+  solver.impliesNot(c, "3");
+  solver.impliesNot(c, "5");
+
+  // Forced to choose two of a, b, c, we must choose
+  // b and c, because they each conflict with a.
+  solver.addConstraint([a, b, c], 1, '=', 2);
+
+  test.equal(solver.solve(), ["2", "4"]);
+});
