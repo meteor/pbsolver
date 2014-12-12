@@ -89,17 +89,57 @@ PBSolver.prototype.addConstraint = function (vars, coeffs, type, rhs) {
 };
 
 PBSolver.prototype.exactlyOne = function (vars) {
-  // XXX consider improving translation to SAT using this paper:
-  // http://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
-  this.addConstraint(vars, 1, '=', 1);
+  if (! vars.length) {
+    throw new Error("At least one variable required");
+  }
+  this.atMostOne(vars);
+  this.atLeastOne(vars);
 };
 
 PBSolver.prototype.atMostOne = function (vars) {
-  // consider optimizing this (see exactlyOne)
-  this.addConstraint(vars, 1, '<=', 1);
+  if (! vars.length) {
+    throw new Error("At least one variable required");
+  }
+  if (vars.length === 1) {
+    // do nothing (always satisfied)
+  } else if (vars.length <= 5) {
+    // Generate O(N^2) clauses of the form:
+    // ((not A) or (not B)) and ((not A) or (not C)) and ...
+    // This generates a lot of clauses, but it results in fast
+    // propagation when solving.  Definitely use it for N <= 5.
+    for (var a = 0; a < vars.length; a++) {
+      for (var b = a+1; b < vars.length; b++) {
+        this.addClause([], [vars[a], vars[b]]);
+      }
+    }
+  } else {
+    // Use the "commander variables" technique from:
+    // http://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
+    // Group into groups of G (possibly with a short group at the end)
+    var G = 3;
+    var allCommanders = [];
+    for (var i = 0; i < vars.length; i += G) {
+      var group = vars.slice(i, i + G);
+      this.atMostOne(group);
+      var commander = this.genVar();
+      // commander implies (A or B or C).  A or B or C or (not commander).
+      this.addClause(group, [commander]);
+      // (A or B or C) implies commander, or equivalently,
+      // ((not commander) implies (not A)) and
+      // ((not commander) implies (not B)) and ...
+      for (var j = 0; j < group.length; j++) {
+        this.implies(group[j], commander);
+      }
+      allCommanders.push(commander);
+    }
+    this.atMostOne(allCommanders);
+  }
 };
 
 PBSolver.prototype.atLeastOne = function (vars) {
+  if (! vars.length) {
+    throw new Error("At least one variable required");
+  }
   this.addClause(vars);
 };
 

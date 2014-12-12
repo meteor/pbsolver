@@ -135,3 +135,79 @@ Tinytest.add("pbsolver - genVar", function (test) {
 
   test.equal(solver.solve(), ["2", "4"]);
 });
+
+
+Tinytest.add("pbsolver - Sudoku", function (test) {
+  var v = function (row, col, value) {
+    return row + "," + col + "=" + value;
+  };
+
+  var solver = new PBSolver();
+
+  // All rows, columns, and digits are 0-based internally.
+  for (var x = 0; x < 9; x++) {
+    // Find the top-left of box x. For example, Box 0 has a top-left
+    // of (0,0).  Box 3 has a top-left of (3,0).
+    var boxRow = Math.floor(x/3)*3;
+    var boxCol = (x%3)*3;
+    for (var y = 0; y < 9; y++) {
+      var numberInEachSquare = [];
+      var columnHavingYInRowX = [];
+      var rowHavingYInColumnX = [];
+      var squareHavingYInBoxX = [];
+      for (var z = 0; z < 9; z++) {
+        numberInEachSquare.push(v(x,y,z));
+        columnHavingYInRowX.push(v(x,z,y));
+        rowHavingYInColumnX.push(v(z,x,y));
+        squareHavingYInBoxX.push(v(
+          boxRow + Math.floor(z/3),
+          boxCol + (z%3),
+          y));
+      }
+      solver.exactlyOne(numberInEachSquare);
+      solver.exactlyOne(columnHavingYInRowX);
+      solver.exactlyOne(rowHavingYInColumnX);
+      solver.exactlyOne(squareHavingYInBoxX);
+    }
+  }
+
+  // Input a pretty hard Sudoku from here:
+  // http://www.menneske.no/sudoku/eng/showpuzzle.html?number=6903541
+  var puzzle = [
+    "....839..",
+    "1......3.",
+    "..4....7.",
+    ".42.3....",
+    "6.......4",
+    "....7..1.",
+    ".2.......",
+    ".8...92..",
+    "...25...6"
+  ];
+  for (var r = 0; r < 9; r++) {
+    var str = puzzle[r];
+    for (var c = 0; c < 9; c++) {
+      // zero-based digit
+      var digit = str.charCodeAt(c) - 49;
+      if (digit >= 0 && digit < 9) {
+        solver.isTrue(v(r, c, digit));
+      }
+    }
+  }
+
+  var solution = solver.solve();
+  var solutionString = _.map(solution, function (v) {
+    return String(Number(v.slice(-1)) + 1);
+  }).join('').match(/.{9}/g).join('\n');
+  test.equal(solutionString, [
+    "765483921",
+    "198726435",
+    "234915678",
+    "842531769",
+    "617892354",
+    "359674812",
+    "926147583",
+    "581369247",
+    "473258196"
+  ].join('\n'));
+});
