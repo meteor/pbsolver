@@ -102,6 +102,18 @@ PBSolver.prototype.exactlyOne = function (vars) {
   this.atLeastOne(vars);
 };
 
+// Asserts the equivalence x == (A or B or ...)
+PBSolver.prototype.equalsOr = function (x, vars) {
+  // x implies (A or B or C).  A or B or C or (not x).
+  this.addClause(vars, [x]);
+  // (A or B or C) implies x, or equivalently,
+  // ((not x) implies (not A)) and
+  // ((not x) implies (not B)) and ...
+  for (var j = 0; j < vars.length; j++) {
+    this.implies(vars[j], x);
+  }
+};
+
 PBSolver.prototype.atMostOne = function (vars) {
   if (! vars.length) {
     throw new Error("At least one variable required");
@@ -128,14 +140,7 @@ PBSolver.prototype.atMostOne = function (vars) {
       var group = vars.slice(i, i + G);
       this.atMostOne(group);
       var commander = this.genVar();
-      // commander implies (A or B or C).  A or B or C or (not commander).
-      this.addClause(group, [commander]);
-      // (A or B or C) implies commander, or equivalently,
-      // ((not commander) implies (not A)) and
-      // ((not commander) implies (not B)) and ...
-      for (var j = 0; j < group.length; j++) {
-        this.implies(group[j], commander);
-      }
+      this.equalsOr(commander, group);
       allCommanders.push(commander);
     }
     this.atMostOne(allCommanders);

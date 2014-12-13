@@ -211,3 +211,95 @@ Tinytest.add("pbsolver - Sudoku", function (test) {
     "473258196"
   ].join('\n'));
 });
+
+Tinytest.add("pbsolver - toy packages", function (test) {
+
+  var withSolver = function (func) {
+
+    var solver = new PBSolver();
+
+    _.each(allPackageVersions, function (versions, package) {
+      versions = _.map(versions, function (v) {
+        return package + "@" + v;
+      });
+      // e.g. atMostOne(["foo@1.0.0", "foo@1.0.1", "foo@2.0.0"])
+      solver.atMostOne(versions);
+      // e.g. equalsOr("foo", ["foo@1.0.0", ...])
+      solver.equalsOr(package, versions);
+    });
+
+    _.each(dependencies, function (depMap, packageVersion) {
+      _.each(depMap, function (compatibleVersions, package2) {
+        // e.g. implies("bar@1.2.4", "foo")
+        solver.implies(packageVersion, package2);
+        // Now ban all incompatible versions of package2 if
+        // we select this packageVersion
+        _.each(allPackageVersions[package2], function (v) {
+          if (! _.contains(compatibleVersions, v)) {
+            solver.impliesNot(packageVersion,
+                              package2 + "@" + v);
+          }
+        });
+      });
+    });
+
+    var solve = function () {
+      var solution = solver.solve();
+      if (! solution) {
+        return solution; // null
+      } else {
+        // only return variables like "foo@1.0.0", not "foo"
+        return _.filter(solution, function (v) {
+          return v.indexOf('@') >= 0;
+        });
+      }
+    };
+
+    func(solver, solve);
+  };
+
+  var allPackageVersions = {
+    'foo': ['1.0.0', '1.0.1', '2.0.0'],
+    'bar': ['1.2.3', '1.2.4', '1.2.5'],
+    'baz': ['3.0.0']
+  };
+
+  // Exact dependencies.  No inequalities for this toy example, and no
+  // cost function, so our test problems have unique solutions.
+  var dependencies = {
+    'bar@1.2.3': { foo: ['1.0.0'] },
+    'bar@1.2.4': { foo: ['1.0.1'] },
+    'bar@1.2.5': { foo: ['2.0.0'] },
+    'baz@3.0.0': { foo: ['1.0.0', '1.0.1'],
+                   bar: ['1.2.4', '1.2.5'] }
+  };
+
+  withSolver(function (solver, solve) {
+    // Ask for "bar@1.2.5", get both it and "foo@2.0.0"
+    solver.isTrue("bar@1.2.5");
+    test.equal(solve(), ["bar@1.2.5", "foo@2.0.0"]);
+  });
+
+  withSolver(function (solver, solve) {
+    // Ask for "foo@1.0.1" and *some* version of bar!
+    solver.isTrue("foo@1.0.1");
+    solver.isTrue("bar");
+    test.equal(solve(), ["bar@1.2.4", "foo@1.0.1"]);
+  });
+
+  withSolver(function (solver, solve) {
+    // Ask for versions that can't be combined
+    solver.isTrue("foo@1.0.1");
+    solver.isTrue("bar@1.2.3");
+    test.equal(solve(), null);
+  });
+
+  withSolver(function (solver, solve) {
+    // Ask for baz, automatically get versions of foo and bar
+    // such that foo satisfies bar's dependency!
+    solver.isTrue("baz");
+    test.equal(solve(), ["bar@1.2.4",
+                         "baz@3.0.0",
+                         "foo@1.0.1"]);
+  });
+});
