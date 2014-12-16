@@ -212,6 +212,22 @@ Tinytest.add("pbsolver - Sudoku", function (test) {
   ].join('\n'));
 });
 
+Tinytest.add("pbsolver - optimize", function (test) {
+  var solver = new PBSolver();
+  var points = [[3,5], [2,4], [2,1], [4,2], [5,1]];
+  solver.exactlyOne(_.map(points, function (p) {
+    return p.join(',');
+  }));
+
+  var costVectorMap = {};
+  _.each(points, function (p) {
+    costVectorMap[p.join(',')] = p;
+  });
+
+  // should find lexically smallest one
+  test.equal(solver.optimize(costVectorMap), ['2,1']);
+});
+
 Tinytest.add("pbsolver - toy packages", function (test) {
 
   var withSolver = function (func) {
@@ -243,8 +259,9 @@ Tinytest.add("pbsolver - toy packages", function (test) {
       });
     });
 
-    var solve = function () {
-      var solution = solver.solve();
+    var solve = function (optionalCosts) {
+      var solution = (optionalCosts ? solver.optimize(optionalCosts) :
+                      solver.solve());
       if (! solution) {
         return solution; // null
       } else {
@@ -264,8 +281,7 @@ Tinytest.add("pbsolver - toy packages", function (test) {
     'baz': ['3.0.0']
   };
 
-  // Exact dependencies.  No inequalities for this toy example, and no
-  // cost function, so our test problems have unique solutions.
+  // Exact dependencies.
   var dependencies = {
     'bar@1.2.3': { foo: ['1.0.0'] },
     'bar@1.2.4': { foo: ['1.0.1'] },
@@ -302,4 +318,59 @@ Tinytest.add("pbsolver - toy packages", function (test) {
                          "baz@3.0.0",
                          "foo@1.0.1"]);
   });
+
+  withSolver(function (solver, solve) {
+    // pick earliest versions
+    solver.isTrue("foo");
+    solver.isTrue("bar");
+    test.equal(solve({ "foo@1.0.0": [0],
+                       "foo@1.0.1": [1],
+                       "foo@2.0.0": [2],
+                       "bar@1.2.3": [0],
+                       "bar@1.2.4": [1],
+                       "bar@1.2.5": [2] }),
+               ["bar@1.2.3", "foo@1.0.0"]);
+  });
+
+  withSolver(function (solver, solve) {
+    // pick latest versions
+    solver.isTrue("foo");
+    solver.isTrue("bar");
+    test.equal(solve({ "foo@1.0.0": [2],
+                       "foo@1.0.1": [1],
+                       "foo@2.0.0": [0],
+                       "bar@1.2.3": [2],
+                       "bar@1.2.4": [1],
+                       "bar@1.2.5": [0] }),
+               ["bar@1.2.5", "foo@2.0.0"]);
+  });
+
+  withSolver(function (solver, solve) {
+    // pick earliest versions (but give solver a
+    // cost vector with extra stuff)
+    solver.isTrue("foo");
+    solver.isTrue("bar");
+    test.equal(solve({ "foo@1.0.0": [1, 0],
+                       "foo@1.0.1": [1, 1],
+                       "foo@2.0.0": [1, 2],
+                       "bar@1.2.3": [2, 0],
+                       "bar@1.2.4": [2, 1],
+                       "bar@1.2.5": [2, 2] }),
+               ["bar@1.2.3", "foo@1.0.0"]);
+  });
+
+  withSolver(function (solver, solve) {
+    // pick latest versions (but give solver a
+    // bigger vector to work with)
+    solver.isTrue("foo");
+    solver.isTrue("bar");
+    test.equal(solve({ "foo@1.0.0": [1, 2],
+                       "foo@1.0.1": [1, 1],
+                       "foo@2.0.0": [1, 0],
+                       "bar@1.2.3": [2, 2],
+                       "bar@1.2.4": [2, 1],
+                       "bar@1.2.5": [2, 0] }),
+               ["bar@1.2.5", "foo@2.0.0"]);
+  });
+
 });

@@ -4,6 +4,7 @@ Package.describe({
 });
 
 Package.on_use(function (api) {
+  api.versionsFrom('METEOR@1.0');
   api.export('PBSolver');
   api.use('check');
   api.use('underscore');
@@ -11,7 +12,8 @@ Package.on_use(function (api) {
 });
 
 Package.on_test(function (api) {
+  api.versionsFrom('METEOR@1.0');
   api.use('tinytest');
-  api.use('pbsolver');
+  api.use('david:pbsolver');
   api.add_files('pbsolver_tests.js');
 });
